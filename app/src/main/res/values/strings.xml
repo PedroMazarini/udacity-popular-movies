@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name" translatable="false">Movix</string>
+    <string name="api_key" translatable="false"></string>
+    <string name="failed_load">Failed to load movies list!</string>
+    <string name="title_activity_movie_details" translatable="false">MovieDetailsActivity</string>
+    <string name="favorite">Favorite</string>
+    <string name="failed_to_load">Failed to load!</string>
+    <string name="failed_to_load_trailers">Failed to load trailers!</string>
+    <string name="retry">Retry</string>
+    <string name="top_rated">Top Rated</string>
+    <string name="popular">Popular</string>
+    <string name="sort_movies">Sort Movies</string>
+</resources>
