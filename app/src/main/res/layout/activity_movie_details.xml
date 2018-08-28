@@ -77,23 +77,17 @@
                     android:textColor="@color/white"
                     android:layout_below="@id/txt_duration"
                     android:text=""/>
-                <ImageButton
+                <com.airbnb.lottie.LottieAnimationView
                     android:id="@+id/btn_favorite"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:src="@drawable/favorite"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    app:lottie_rawRes="@raw/like"
+                    app:lottie_loop="false"
                     android:layout_alignParentRight="true"
                     android:layout_marginRight="20dp"
+                    android:scaleType="centerCrop"
                     android:layout_marginTop="30dp"
-                    android:minHeight="40dp"
-                    android:paddingLeft="5dp"
-                    android:paddingRight="5dp"
-                    android:paddingTop="5dp"
-                    android:paddingBottom="5dp"
-                    android:background="@color/colorPrimary"
-                    android:tint="@color/white"
-                    android:visibility="gone"
-                    />
+                    android:minHeight="40dp"/>
             </RelativeLayout>
         </RelativeLayout>
         <TextView
@@ -111,6 +105,12 @@
             android:orientation="vertical"
             android:visibility="gone"
             >
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/grey"
+                android:layout_marginRight="8dp"
+                android:layout_marginLeft="8dp"/>
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -118,12 +118,6 @@
                 android:gravity="center"
                 android:textSize="20sp"
                 android:text="Trailers"/>
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/grey"
-                android:layout_marginRight="8dp"
-                android:layout_marginLeft="8dp"/>
             <LinearLayout
                 android:id="@+id/layout_failed_trailers"
                 android:layout_width="wrap_content"
@@ -152,6 +146,58 @@
                 android:layout_gravity="center"/>
             <android.support.v7.widget.RecyclerView
                 android:id="@+id/recycler_trailers"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:layout_behavior="@string/appbar_scrolling_view_behavior"/>
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/layout_movie_reviews"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            >
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/grey"
+                android:layout_marginRight="8dp"
+                android:layout_marginLeft="8dp"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:textSize="20sp"
+                android:text="Trailers"/>
+            <LinearLayout
+                android:id="@+id/layout_failed_reviews"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:orientation="vertical"
+                android:visibility="gone">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/failed_to_load_trailers"/>
+                <Button
+                    android:id="@+id/btn_retry_reviews"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:layout_gravity="center"
+                    android:text="@string/retry"/>
+            </LinearLayout>
+            <com.victor.loading.rotate.RotateLoading
+                android:id="@+id/rotateloading_reviews"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                app:loading_width="5dp"
+                app:loading_color="#ffffff"
+                android:layout_gravity="center"/>
+            <android.support.v7.widget.RecyclerView
+                android:id="@+id/recycler_reviews"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:layout_behavior="@string/appbar_scrolling_view_behavior"/>

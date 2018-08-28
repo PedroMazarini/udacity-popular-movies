@@ -1,13 +1,19 @@
 package com.movix.movix;
 
+import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.AsyncTask;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.ActivityOptionsCompat;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.AsyncTaskLoader;
+import android.support.v4.content.Loader;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -36,7 +42,8 @@ import butterknife.ButterKnife;
 
 import static com.movix.movix.utilities.Constants.SORT_ORDER_TOP_RATED;
 
-public class MoviesListActivity extends AppCompatActivity {
+public class MoviesListActivity extends AppCompatActivity implements
+        LoaderManager.LoaderCallbacks<String>  {
 
     @BindView(R.id.recycler_movies)
     RecyclerView recyclerMovies;
@@ -45,6 +52,9 @@ public class MoviesListActivity extends AppCompatActivity {
     @BindView(R.id.fab_filter)
     FloatingActionButton fabFilter;
     MoviesListAdapter adapter;
+
+    private static final String SORT_ORDER_EXTRA = "sort_order";
+    private static final int FETCH_LOADER = 22;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,7 +99,15 @@ public class MoviesListActivity extends AppCompatActivity {
         adapter.clear();
         newtonCradleLoading.setVisibility(View.VISIBLE);
         newtonCradleLoading.start();
-        new FetchMoviesTask().execute(sortOrder);
+        Bundle queryBundle = new Bundle();
+        queryBundle.putString(SORT_ORDER_EXTRA, sortOrder);
+        LoaderManager loaderManager = getSupportLoaderManager();
+        Loader<String> githubSearchLoader = loaderManager.getLoader(FETCH_LOADER);
+        if (githubSearchLoader == null) {
+            loaderManager.initLoader(FETCH_LOADER, queryBundle, this);
+        } else {
+            loaderManager.restartLoader(FETCH_LOADER, queryBundle, this);
+        }
     }
 
     public void callMovieDetails(Integer movieId, String movieBannerURL, Boolean video, String title, View view){
@@ -104,44 +122,68 @@ public class MoviesListActivity extends AppCompatActivity {
         ActivityCompat.startActivity(this, intent, activityOptions.toBundle());
     }
 
-    // COMPLETED (5) Create a class that extends AsyncTask to perform network requests
-    public class FetchMoviesTask extends AsyncTask<String, Void, String> {
-
-        // COMPLETED (6) Override the doInBackground method to perform your network requests
-        @Override
-        protected String doInBackground(String... params) {
-
-            String sortOrder = params[0];
-            URL moviesRequestURL = NetworkUtils.buildUrl(getApplicationContext(), sortOrder);
-
-            try {
-                String moviesJSON = NetworkUtils
-                        .getResponseFromHttpUrl(moviesRequestURL);
-                return moviesJSON;
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-        // COMPLETED (7) Override the onPostExecute method to display the results of the network request
-        @Override
-        protected void onPostExecute(String moviesJSON) {
-            if (moviesJSON != null) {
-                try {
-                    JSONObject result = new JSONObject(moviesJSON);
-                    Gson gson = new Gson();
-                    Type movieListType = new TypeToken< ArrayList<Movie>>(){}.getType();
-                    List<Movie> movieList = gson.fromJson(result.getJSONArray("results").toString(), movieListType);
-                    newtonCradleLoading.stop();
-                    newtonCradleLoading.setVisibility(View.GONE);
-                    adapter.setList(movieList);
-                } catch (JSONException e) {
-                    e.printStackTrace();
+    @SuppressLint("StaticFieldLeak")
+    @NonNull
+    @Override
+    public Loader<String> onCreateLoader(int id, @Nullable final Bundle args) {
+        return new AsyncTaskLoader<String>(this) {
+            String moviesJSON;
+            @Override
+            protected void onStartLoading() {
+                if (args == null) {
+                    return;
                 }
-            }else{
-                Toast.makeText(getApplicationContext(), R.string.failed_load,Toast.LENGTH_LONG).show();
+                if (moviesJSON != null) {
+                    deliverResult(moviesJSON);
+                } else {
+                    forceLoad();
+                }
             }
+
+            @Nullable
+            @Override
+            public String loadInBackground() {
+                String sortOrder = args.getString(SORT_ORDER_EXTRA);
+                URL moviesRequestURL = NetworkUtils.buildUrl(getApplicationContext(), sortOrder);
+
+                try {
+                    String moviesJSON = NetworkUtils
+                            .getResponseFromHttpUrl(moviesRequestURL);
+                    return moviesJSON;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return null;
+                }
+            }
+            @Override
+            public void deliverResult(String moviesJSON) {
+                moviesJSON = moviesJSON;
+                super.deliverResult(moviesJSON);
+            }
+        };
+    }
+
+    @Override
+    public void onLoadFinished(@NonNull Loader<String> loader, String moviesJSON) {
+        if (moviesJSON != null) {
+            try {
+                JSONObject result = new JSONObject(moviesJSON);
+                Gson gson = new Gson();
+                Type movieListType = new TypeToken< ArrayList<Movie>>(){}.getType();
+                List<Movie> movieList = gson.fromJson(result.getJSONArray("results").toString(), movieListType);
+                newtonCradleLoading.stop();
+                newtonCradleLoading.setVisibility(View.GONE);
+                adapter.setList(movieList);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }else{
+            Toast.makeText(getApplicationContext(), R.string.failed_load,Toast.LENGTH_LONG).show();
         }
+    }
+
+    @Override
+    public void onLoaderReset(@NonNull Loader<String> loader) {
+
     }
 }

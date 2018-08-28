@@ -1,19 +1,18 @@
 package com.movix.movix;
 
 import android.content.ActivityNotFoundException;
-import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v4.app.LoaderManager;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
@@ -23,6 +22,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.airbnb.lottie.LottieAnimationView;
 import com.bumptech.glide.Glide;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -39,14 +39,13 @@ import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.SimpleTimeZone;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
-public class MovieDetailsActivity extends AppCompatActivity {
+public class MovieDetailsActivity extends AppCompatActivity implements
+        LoaderManager.LoaderCallbacks<String> {
 
     @BindView(R.id.txt_release_date)
     TextView txtReleaseDate;
@@ -57,7 +56,7 @@ public class MovieDetailsActivity extends AppCompatActivity {
     @BindView(R.id.txt_movie_description)
     TextView txtMovieDescription;
     @BindView(R.id.btn_favorite)
-    ImageButton btnFavorite;
+    LottieAnimationView btnFavorite;
     @BindView(R.id.img_movie_banner)
     ImageView imgMovieBanner;
     @BindView(R.id.rotateloading)
@@ -103,6 +102,7 @@ public class MovieDetailsActivity extends AppCompatActivity {
         Glide.with(this).load(movieBannerURL).placeholder(R.drawable.movie_placeholder).into(imgMovieBanner);
         loadMovieDetails(movieId);
         loadMovieTrailers(movieId);
+        btnFavorite.setProgress(0.25f);
 
         btnRetryDetails.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -123,10 +123,12 @@ public class MovieDetailsActivity extends AppCompatActivity {
         btnFavorite.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(!isFavorite)
-                    btnFavorite.setColorFilter(ContextCompat.getColor(getApplicationContext(), R.color.yellow), android.graphics.PorterDuff.Mode.MULTIPLY);
-                if(isFavorite)
-                    btnFavorite.clearColorFilter();
+                if(isFavorite){
+                    btnFavorite.pauseAnimation();
+                    btnFavorite.setProgress(0.25f);
+                }else{
+                    btnFavorite.playAnimation();
+                }
                 isFavorite = !isFavorite;
             }
         });
@@ -153,6 +155,22 @@ public class MovieDetailsActivity extends AppCompatActivity {
 
     private void loadMovieDetails(Integer movieId) {
         new FetchMovieDetailsTask().execute(movieId);
+    }
+
+    @NonNull
+    @Override
+    public Loader<String> onCreateLoader(int id, @Nullable Bundle args) {
+        return null;
+    }
+
+    @Override
+    public void onLoadFinished(@NonNull Loader<String> loader, String data) {
+
+    }
+
+    @Override
+    public void onLoaderReset(@NonNull Loader<String> loader) {
+
     }
 
     public class FetchMovieDetailsTask extends AsyncTask<Integer, Void, String> {
