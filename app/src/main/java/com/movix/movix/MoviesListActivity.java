@@ -1,6 +1,10 @@
 package com.movix.movix;
 
 import android.annotation.SuppressLint;
+import android.arch.lifecycle.LiveData;
+import android.arch.lifecycle.Observer;
+import android.arch.paging.PagedList;
+import android.arch.paging.RxPagedListBuilder;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
@@ -26,6 +30,9 @@ import android.widget.Toast;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.movix.movix.Entities.Movie;
+import com.movix.movix.local.Dao.MovieDao;
+import com.movix.movix.local.MovieLocal;
+import com.movix.movix.local.MovixDatabase;
 import com.movix.movix.utilities.NetworkUtils;
 import com.victor.loading.newton.NewtonCradleLoading;
 
@@ -39,7 +46,13 @@ import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import io.reactivex.BackpressureStrategy;
+import io.reactivex.Flowable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.schedulers.Schedulers;
 
+import static com.movix.movix.utilities.Constants.SORT_ORDER_FAVORITE;
+import static com.movix.movix.utilities.Constants.SORT_ORDER_POPULAR;
 import static com.movix.movix.utilities.Constants.SORT_ORDER_TOP_RATED;
 
 public class MoviesListActivity extends AppCompatActivity implements
@@ -52,9 +65,13 @@ public class MoviesListActivity extends AppCompatActivity implements
     @BindView(R.id.fab_filter)
     FloatingActionButton fabFilter;
     MoviesListAdapter adapter;
+    CompositeDisposable compositeDisposable;
+    MovixDatabase movixDatabase;
 
     private static final String SORT_ORDER_EXTRA = "sort_order";
     private static final int FETCH_LOADER = 22;
+    LiveData<List<MovieLocal>> localMovies;
+    String lastSortOrder = SORT_ORDER_TOP_RATED;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,17 +86,20 @@ public class MoviesListActivity extends AppCompatActivity implements
         fabFilter.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                CharSequence options[] = new CharSequence[] {getString(R.string.popular),getString(R.string.top_rated)};
+                CharSequence options[] = new CharSequence[] {getString(R.string.popular),getString(R.string.top_rated), getString(R.string.favorite)};
                 AlertDialog.Builder builder = new AlertDialog.Builder(MoviesListActivity.this);
                 builder.setTitle(R.string.sort_movies)
                         .setItems(options, new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int which) {
                                 switch (which){
                                     case 0:
-                                        loadMoviesData("popular");
+                                        loadMoviesData(SORT_ORDER_POPULAR);
                                         break;
                                     case 1:
-                                        loadMoviesData("top_rated");
+                                        loadMoviesData(SORT_ORDER_TOP_RATED);
+                                        break;
+                                    case 2:
+                                        loadMoviesData(SORT_ORDER_FAVORITE);
                                         break;
                                 }
                             }
@@ -99,22 +119,55 @@ public class MoviesListActivity extends AppCompatActivity implements
         adapter.clear();
         newtonCradleLoading.setVisibility(View.VISIBLE);
         newtonCradleLoading.start();
-        Bundle queryBundle = new Bundle();
-        queryBundle.putString(SORT_ORDER_EXTRA, sortOrder);
-        LoaderManager loaderManager = getSupportLoaderManager();
-        Loader<String> githubSearchLoader = loaderManager.getLoader(FETCH_LOADER);
-        if (githubSearchLoader == null) {
-            loaderManager.initLoader(FETCH_LOADER, queryBundle, this);
-        } else {
-            loaderManager.restartLoader(FETCH_LOADER, queryBundle, this);
+        if(!sortOrder.equals(SORT_ORDER_FAVORITE)) {
+            Bundle queryBundle = new Bundle();
+            queryBundle.putString(SORT_ORDER_EXTRA, sortOrder);
+            LoaderManager loaderManager = getSupportLoaderManager();
+            Loader<String> fetchLoader = loaderManager.getLoader(FETCH_LOADER);
+            lastSortOrder = sortOrder;
+            if (fetchLoader == null) {
+                loaderManager.initLoader(FETCH_LOADER, queryBundle, this);
+            } else {
+                loaderManager.restartLoader(FETCH_LOADER, queryBundle, this);
+            }
+        }else{
+            getSupportLoaderManager().destroyLoader(FETCH_LOADER);
+            movixDatabase = MovixDatabase.getInstance(this);
+            localMovies = movixDatabase.getMovieDao().getAllFavoriteMovies();
+            if(!localMovies.hasObservers()) {
+                localMovies.observe(this, new Observer<List<MovieLocal>>() {
+                    @Override
+                    public void onChanged(@Nullable List<MovieLocal> movieLocals) {
+                        newtonCradleLoading.stop();
+                        newtonCradleLoading.setVisibility(View.GONE);
+                        adapter.setList(parseMovieLocals(movieLocals));
+                        if(movieLocals.size()==0){
+                            Toast.makeText(MoviesListActivity.this, "No favorite movies added!", Toast.LENGTH_LONG).show();
+                            if(lastSortOrder!=SORT_ORDER_FAVORITE)
+                                loadMoviesData(lastSortOrder);
+                            else
+                                loadMoviesData(SORT_ORDER_TOP_RATED);
+                        }
+                    }
+                });
+            }
         }
     }
 
-    public void callMovieDetails(Integer movieId, String movieBannerURL, Boolean video, String title, View view){
+    public List<Movie> parseMovieLocals(List<MovieLocal> movieLocals){
+        List<Movie> movieList = new ArrayList<>();
+        for (MovieLocal movieLocal : movieLocals) {
+            movieList.add(movieLocal.parse());
+        }
+        return movieList;
+    }
+
+    public void callMovieDetails(Integer movieId, String movieBannerURL, String poster_path, Boolean video, String title, View view){
         view.setTransitionName("img_movie_banner");
         Intent intent = new Intent(this, MovieDetailsActivity.class);
         intent.putExtra("movie_id",movieId);
         intent.putExtra("video",video);
+        intent.putExtra("poster_path",poster_path);
         intent.putExtra("movie_banner_url", movieBannerURL);
         intent.putExtra("movie_title", title);
         ActivityOptionsCompat activityOptions =

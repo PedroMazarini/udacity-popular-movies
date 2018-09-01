@@ -38,7 +38,6 @@ public class MoviesListAdapter extends RecyclerView.Adapter<MoviesListAdapter.My
         View itemView = LayoutInflater.from(mContext)
                 .inflate(R.layout.movie_item_layout, viewGroup, false);
         return new MyViewHolder(itemView);
-
     }
 
     @Override
@@ -49,7 +48,7 @@ public class MoviesListAdapter extends RecyclerView.Adapter<MoviesListAdapter.My
         viewHolder.imgMovieBanner.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mActivity.callMovieDetails(movieList.get(i).getId(),movieBannerUrl, movieList.get(i).getVideo(), movieList.get(i).getTitle(), view);
+                mActivity.callMovieDetails(movieList.get(i).getId(),movieBannerUrl, movie.getPoster_path(), movieList.get(i).getVideo(), movieList.get(i).getTitle(), view);
             }
         });
     }

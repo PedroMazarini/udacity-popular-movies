@@ -148,6 +148,8 @@
                 android:id="@+id/recycler_trailers"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:isScrollContainer="true"
+                android:nestedScrollingEnabled="false"
                 app:layout_behavior="@string/appbar_scrolling_view_behavior"/>
         </LinearLayout>
         <LinearLayout
@@ -169,7 +171,7 @@
                 android:layout_gravity="center"
                 android:gravity="center"
                 android:textSize="20sp"
-                android:text="Trailers"/>
+                android:text="@string/reviews"/>
             <LinearLayout
                 android:id="@+id/layout_failed_reviews"
                 android:layout_width="wrap_content"
@@ -200,7 +202,10 @@
                 android:id="@+id/recycler_reviews"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:isScrollContainer="true"
+                android:nestedScrollingEnabled="false"
                 app:layout_behavior="@string/appbar_scrolling_view_behavior"/>
         </LinearLayout>
+
     </LinearLayout>
 </android.support.v4.widget.NestedScrollView>

@@ -81,6 +81,25 @@ public final class NetworkUtils {
 
         return url;
     }
+
+    public static URL buildReviewsURL(Context context, Integer id) {
+        // COMPLETED (1) Fix this method to return the URL used to query Open Weather Map's API
+        Uri builtUri = Uri.parse(BASE_URL+"/"+String.valueOf(id)+"/reviews").buildUpon()
+                .appendQueryParameter("api_key",context.getResources().getString(R.string.api_key))
+                .appendQueryParameter("language", Locale.getDefault().getISO3Language())
+                .build();
+
+        URL url = null;
+        try {
+            url = new URL(builtUri.toString());
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+
+        Log.v(TAG, "Built URI " + url);
+
+        return url;
+    }
     public static URL buildDetailsURL(Context context, Integer id) {
         // COMPLETED (1) Fix this method to return the URL used to query Open Weather Map's API
         Uri builtUri = Uri.parse(BASE_URL+"/"+String.valueOf(id)).buildUpon()

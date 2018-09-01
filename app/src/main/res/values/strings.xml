@@ -10,4 +10,6 @@
     <string name="top_rated">Top Rated</string>
     <string name="popular">Popular</string>
     <string name="sort_movies">Sort Movies</string>
+    <string name="reviews">Reviews</string>
+    <string name="choose_a_player">Choose a player</string>
 </resources>

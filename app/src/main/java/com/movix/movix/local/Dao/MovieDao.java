@@ -1,5 +1,6 @@
 package com.movix.movix.local.Dao;
 
+import android.arch.lifecycle.LiveData;
 import android.arch.persistence.room.Dao;
 import android.arch.persistence.room.Delete;
 import android.arch.persistence.room.Insert;
@@ -9,21 +10,26 @@ import com.movix.movix.local.MovieLocal;
 
 import android.arch.paging.DataSource;
 
+import java.util.List;
+
 import io.reactivex.Single;
 
 @Dao
 public abstract class MovieDao {
 
+    public void insertMovie(MovieLocal movieLocal) {
+        insert(movieLocal);
+    }
     @Query("SELECT * FROM MovieLocal")
-    public abstract DataSource.Factory<Integer, MovieLocal> getAllFavoriteMovies();
+    public abstract LiveData<List<MovieLocal>> getAllFavoriteMovies();
 
     @Insert(onConflict = OnConflictStrategy.FAIL)
     abstract long insert(MovieLocal movieLocal);
 
-    @Delete
-    public abstract void delete(MovieLocal... movieLocals);
+    @Query("DELETE FROM MovieLocal where id = :id")
+    public abstract void remove(Integer id);
 
     @Query("SELECT * FROM MovieLocal where id = :id")
-    public abstract Single<MovieLocal> selectMovie(Integer id);
+    public abstract MovieLocal selectMovie(Integer id);
 
 }

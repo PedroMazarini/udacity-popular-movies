@@ -13,7 +13,7 @@ import com.movix.movix.local.Dao.MovieDao;
         version = BuildConfig.VERSION_CODE, exportSchema = false)
 public abstract class MovixDatabase extends RoomDatabase {
 
-    private static final String DB_NAME = "baseDatabase.db";
+    private static final String DB_NAME = "movixDatabase.db";
     private static volatile MovixDatabase instance;
 
     public static synchronized MovixDatabase getInstance(Context context) {

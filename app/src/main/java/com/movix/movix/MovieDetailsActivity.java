@@ -5,6 +5,9 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.LoaderManager;
@@ -27,7 +30,10 @@ import com.bumptech.glide.Glide;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.movix.movix.Entities.Movie;
+import com.movix.movix.Entities.Review;
 import com.movix.movix.Entities.Trailer;
+import com.movix.movix.local.MovieLocal;
+import com.movix.movix.local.MovixDatabase;
 import com.movix.movix.utilities.NetworkUtils;
 import com.victor.loading.rotate.RotateLoading;
 
@@ -40,6 +46,8 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -75,15 +83,28 @@ public class MovieDetailsActivity extends AppCompatActivity implements
     LinearLayout failedTrailersLayout;
     @BindView(R.id.recycler_trailers)
     RecyclerView recyclerTrailers;
+    @BindView(R.id.rotateloading_reviews)
+    RotateLoading rotateLoadingReviews;
+    @BindView(R.id.btn_retry_reviews)
+    Button btnRetryReviews;
+    @BindView(R.id.layout_movie_reviews)
+    LinearLayout reviewsLayout;
+    @BindView(R.id.layout_failed_reviews)
+    LinearLayout failedReviewsLayout;
+    @BindView(R.id.recycler_reviews)
+    RecyclerView recyclerReviews;
     Boolean isFavorite = false;
     Integer movieId;
     Boolean video;
     String title;
     String movieBannerURL;
     TrailersListAdapter adapter;
+    ReviewsListAdapter reviewsListAdapter;
+    String poster_path;
 
     SimpleDateFormat outDateFormat = new SimpleDateFormat("MM/yyyy");
     SimpleDateFormat inDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+    MovixDatabase movixDatabase;
 
 
     @Override
@@ -95,6 +116,7 @@ public class MovieDetailsActivity extends AppCompatActivity implements
         Intent intent = getIntent();
         Bundle extras = getIntent().getExtras();
         movieBannerURL = extras.getString("movie_banner_url");
+        poster_path = extras.getString("poster_path");
         movieId = extras.getInt("movie_id");
         video = extras.getBoolean("video");
         title = extras.getString("movie_title");
@@ -102,6 +124,7 @@ public class MovieDetailsActivity extends AppCompatActivity implements
         Glide.with(this).load(movieBannerURL).placeholder(R.drawable.movie_placeholder).into(imgMovieBanner);
         loadMovieDetails(movieId);
         loadMovieTrailers(movieId);
+        loadMovieReviews(movieId);
         btnFavorite.setProgress(0.25f);
 
         btnRetryDetails.setOnClickListener(new View.OnClickListener() {
@@ -115,9 +138,17 @@ public class MovieDetailsActivity extends AppCompatActivity implements
         btnRetryVideos.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                loadMovieDetails(movieId);
+                loadMovieTrailers(movieId);
                 rotateLoadingTrailers.setVisibility(View.VISIBLE);
                 failedTrailersLayout.setVisibility(View.GONE);
+            }
+        });
+        btnRetryReviews.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                loadMovieReviews(movieId);
+                rotateLoadingReviews.setVisibility(View.VISIBLE);
+                failedReviewsLayout.setVisibility(View.GONE);
             }
         });
         btnFavorite.setOnClickListener(new View.OnClickListener() {
@@ -128,6 +159,64 @@ public class MovieDetailsActivity extends AppCompatActivity implements
                     btnFavorite.setProgress(0.25f);
                 }else{
                     btnFavorite.playAnimation();
+                }
+                toggleFavoriteMovie();
+            }
+        });
+        btnFavorite.setEnabled(false);
+        checkForFavorite();
+    }
+
+    private void checkForFavorite() {
+        Executors.newSingleThreadExecutor().execute(new Runnable() {
+            @Override
+            public void run() {
+                movixDatabase = MovixDatabase.getInstance(MovieDetailsActivity.this);
+                MovieLocal movieLocal = movixDatabase.getMovieDao().selectMovie(movieId);
+                if(movieLocal != null){
+                    isFavorite = true;
+                    playAnimation();
+                }
+                enableButton();
+            }
+        });
+    }
+
+    private void playAnimation() {
+        Handler mainHandler = new Handler(Looper.getMainLooper());
+
+        Runnable myRunnable = new Runnable() {
+            @Override
+            public void run() {btnFavorite.playAnimation();} // This is your code
+        };
+        mainHandler.post(myRunnable);
+
+    }
+
+    private void enableButton(){
+        Handler mainHandler = new Handler(Looper.getMainLooper());
+
+        Runnable myRunnable = new Runnable() {
+            @Override
+            public void run() {
+                btnFavorite.setEnabled(true);} // This is your code
+        };
+        mainHandler.post(myRunnable);
+    }
+    private void toggleFavoriteMovie() {
+        Executors.newSingleThreadExecutor().execute(new Runnable() {
+            @Override
+            public void run() {
+                movixDatabase = MovixDatabase.getInstance(MovieDetailsActivity.this);
+                if(isFavorite) {
+                    movixDatabase.getMovieDao().remove(movieId);
+                }else{
+                    MovieLocal movieLocal = new MovieLocal();
+                    movieLocal.setId(movieId);
+                    movieLocal.setPoster_path(poster_path);
+                    movieLocal.setTitle(title);
+                    movieLocal.setVideo(video);
+                    movixDatabase.getMovieDao().insertMovie(movieLocal);
                 }
                 isFavorite = !isFavorite;
             }
@@ -142,12 +231,20 @@ public class MovieDetailsActivity extends AppCompatActivity implements
         new FetchMovieTrailersTask().execute(movieId);
     }
 
+    private void loadMovieReviews(Integer movieId) {
+        reviewsLayout.setVisibility(View.VISIBLE);
+        reviewsListAdapter = new ReviewsListAdapter(this);
+        recyclerReviews.setLayoutManager(new LinearLayoutManager(this));
+        recyclerReviews.setAdapter(reviewsListAdapter);
+        new FetchMovieReviewsTask().execute(movieId);
+    }
+
     public void watchYoutubeVideo(String id){
         Intent appIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:" + id));
         Intent webIntent = new Intent(Intent.ACTION_VIEW,
                 Uri.parse("http://www.youtube.com/watch?v=" + id));
         try {
-            this.startActivity(appIntent);
+            this.startActivity(Intent.createChooser(appIntent, getString(R.string.choose_a_player)));
         } catch (ActivityNotFoundException ex) {
             this.startActivity(webIntent);
         }
@@ -266,6 +363,51 @@ public class MovieDetailsActivity extends AppCompatActivity implements
                     }else{
                         trailersLayout.setVisibility(View.GONE);
                     }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    trailersLayout.setVisibility(View.GONE);
+                }
+            }else{
+                Toast.makeText(getApplicationContext(), R.string.failed_load,Toast.LENGTH_LONG).show();
+                rotateLoadingTrailers.setVisibility(View.GONE);
+                failedTrailersLayout.setVisibility(View.VISIBLE);
+            }
+        }
+
+
+    }
+
+    public class FetchMovieReviewsTask extends AsyncTask<Integer, Void, String> {
+
+        // COMPLETED (6) Override the doInBackground method to perform your network requests
+        @Override
+        protected String doInBackground(Integer... params) {
+
+            Integer movieId = params[0];
+            URL moviesRequestURL = NetworkUtils.buildReviewsURL(getApplicationContext(), movieId);
+
+            try {
+                String movieReviewsJSON = NetworkUtils
+                        .getResponseFromHttpUrl(moviesRequestURL);
+                return movieReviewsJSON;
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+
+        // COMPLETED (7) Override the onPostExecute method to display the results of the network request
+        @Override
+        protected void onPostExecute(String reviewsJSON) {
+            if (reviewsJSON != null) {
+                try {
+                    JSONObject result = new JSONObject(reviewsJSON);
+                    Gson gson = new Gson();
+                    Type reviewListType = new TypeToken< ArrayList<Review>>(){}.getType();
+                    List<Review> reviewsList = gson.fromJson(result.getJSONArray("results").toString(), reviewListType);
+                    rotateLoadingReviews.setVisibility(View.GONE);
+                    reviewsLayout.setVisibility(View.VISIBLE);
+                    reviewsListAdapter.setList(reviewsList);
                 } catch (JSONException e) {
                     e.printStackTrace();
                     trailersLayout.setVisibility(View.GONE);
